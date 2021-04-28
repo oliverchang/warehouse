@@ -39,7 +39,7 @@ from sqlalchemy import (
     orm,
     sql,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -316,6 +316,30 @@ class Dependency(db.Model):
     specifier = Column(Text)
 
 
+release_vulnerabilities = Table("release_vulnerabilities", db.metadata,
+    Column(
+        "release_id",
+        ForeignKey("releases.id", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column(
+        "vulnerability_id",
+        ForeignKey("vulnerabilities.id", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+    ),
+)
+
+
+class Vulnerability(db.Model):
+
+    __tablename__ = "vulnerabilities"
+
+    source = Column(String, primary_key=True)
+    id = Column(String, primary_key=True)
+    link = Column(String)
+    aliases = Column(ARRAY(String))
+
+
 def _dependency_relation(kind):
     return orm.relationship(
         "Dependency",
@@ -421,6 +445,13 @@ class Release(db.Model):
         "Dependency",
         backref="release",
         cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    vulnerabilities = orm.relationship(
+        Vulnerability,
+        backref="releases",
+        secondary=lambda: release_vulnerabilities,
         passive_deletes=True,
     )
 
